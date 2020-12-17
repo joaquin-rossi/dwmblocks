@@ -22,7 +22,6 @@ void getcmds(int time);
 void getsigcmds(int signal);
 void setupsignals();
 void sighandler(int signum);
-void buttonhandler(int sig, siginfo_t *si, void *ucontext);
 #endif
 int getstatus(char *str, char *last);
 void setroot();
@@ -37,7 +36,6 @@ static int screen;
 static Window root;
 static char statusbar[LENGTH(blocks)][CMDLENGTH] = {0};
 static char statusstr[2][256];
-static char button[0];
 static int statusContinue = 1;
 static void (*writestatus) () = setroot;
 
@@ -72,18 +70,7 @@ void getcmd(const Block *block, char *output)
 	}
 	strcpy(output, block->icon);
 	char *cmd = block->command;
-	FILE *cmdf;
-	if (*button)
-	{
-		setenv("BUTTON", button, 1);
-		cmdf = popen(cmd, "r");
-		*button = '\0';
-		unsetenv("BUTTON");
-	}
-	else
-	{
-		cmdf = popen(cmd, "r");
-	}
+	FILE *cmdf = popen(cmd,"r");
 	if (!cmdf)
 		return;
 	char c;
@@ -206,6 +193,7 @@ void sighandler(int signum)
 void buttonhandler(int sig, siginfo_t *si, void *ucontext)
 {
 	char button[2] = {'0' + si->si_value.sival_int & 0xff, '\0'};
+	pid_t process_id = getpid();
 	sig = si->si_value.sival_int >> 8;
 	if (fork() == 0)
 	{
@@ -216,14 +204,14 @@ void buttonhandler(int sig, siginfo_t *si, void *ucontext)
 			if (current->signal == sig)
 				break;
 		}
-		char *command[] = { "/bin/sh", "-c", current->command, NULL };
+		char shcmd[1024];
+		sprintf(shcmd,"%s && kill -%d %d",current->command, current->signal+34,process_id);
+		char *command[] = { "/bin/sh", "-c", shcmd, NULL };
 		setenv("BLOCK_BUTTON", button, 1);
 		setsid();
 		execvp(command[0], command);
 		exit(EXIT_SUCCESS);
 	}
-	getsigcmds(sig);
-	writestatus();
 }
 
 #endif

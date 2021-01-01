@@ -1,1 +1,1 @@
-# my fork fo dwmblocks
+# my fork of dwmblocks

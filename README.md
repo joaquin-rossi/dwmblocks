@@ -1,1 +1,1 @@
-# My build of dwmblocks
+# my fork fo dwmblocks
